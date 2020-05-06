@@ -15,11 +15,6 @@ class GCSFile {
   async write(data) {
     // Uploads a local file to the bucket
     writeStream = storage.file(this.fileName).createWriteStream();
-    // var entities = {}; //huge json object;
-    // Object.values(entities).forEach((json) => {
-    //   var str = JSON.stringify(json);
-    //   gcsStream.write(str + "\n");
-    // });
     writeStream.on("error", (err) => {
       console.error(`${this.fileName}: Error storage file write.`);
       console.error(`${this.fileName}: ${JSON.stringify(err)}`);
@@ -27,7 +22,6 @@ class GCSFile {
 
     writeStream.write(data);
     writeStream.end();
-    //gcsStream.end();
   }
 
   async uploadFile(fileName) {
@@ -50,4 +44,4 @@ class GCSFile {
   }
 }
 
-module.exports = uploadFile;
+module.exports = GCSFile;
