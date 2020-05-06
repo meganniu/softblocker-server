@@ -1,28 +1,27 @@
 const url = require("url");
-const youtube = require("./youtube");
-const generic = require("./generic");
-const wikipedia = require("./wikipedia")
+const scrapeYoutube = require("./youtube");
+const scrapeGeneric = require("./generic");
+const scrapeWikipedia = require("./wikipedia");
 
-const scrape = async (url, forTrainingData) => {
-  const urlParsed = URL(url);
+const scrape = async (pageURL, forTrainingData) => {
+  const urlParsed = new URL(pageURL);
   let data = null;
+
   switch (urlParsed.hostname) {
-    case "youtube":
-      data = youtube.scrape(url);
+    case "www.youtube.com":
+      data = await scrapeYoutube(pageURL);
       break;
-    case "wikipedia":
-      data = wikipedia.scrape(url);
+    case "www.wikipedia.com":
+      data = await scrapeWikipedia(pageURL);
       break;
     default:
-      data = generic.scrape(url);
+      data = await scrapeGeneric(pageURL);
   }
 
   if (forTrainingData === false) {
-    return data.reduce((el) => {
-      (res, el) => {
-        res += el + " ";
-        return res;
-      };
+    return data.reduce((res, el) => {
+      res += el + " ";
+      return res;
     }, "");
   }
 
