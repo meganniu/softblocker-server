@@ -26,6 +26,8 @@ class Model {
 
   async trainModel() {
     if (this.id === null && this.trainingInProgress === false) {
+      this.trainingInProgress = true;
+      
       // Instantiates a client
       const client = new AutoMlClient();
 
@@ -42,7 +44,6 @@ class Model {
       // Don't wait for the LRO
       const [operation] = await client.createModel(request);
       this.id = operation.metadata.id;
-      this.trainingInProgress = true;
       this.trainingOperation = operation;
 
       console.log(`Training started...`, operation);
