@@ -21,6 +21,11 @@ const scrape = async (wikiURL) => {
   return getWikipediaData(path.basename(parsedURL.pathname));
 };
 
-// scrape("Glass");
 
-module.exports = { getWikipediaText, scrape };
+// const test = async () => {
+//   console.log(await scrape("https://en.wikipedia.org/wiki/Glass"));
+// }
+
+// test();
+
+module.exports = { getWikipediaData, scrape };
