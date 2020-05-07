@@ -15,19 +15,12 @@ const buildModel = async topics => {
   const dataset = new Dataset(projectId, location, datasetName);
   await dataset.createDataSet();
   
-  let fileNames = []
   topics.forEach(topic => {
-    fileName = topic + ".csv"
-    fileNames.push(fileName);
-    const csv = createTrainingCSV(await wikipedia.getWikipediaText(topic));
+    const csvData = createTrainingCSV(await wikipedia.getWikipediaData(topic), topic);
 
     const gcsFile = new GCSFile(bucketName, fileName);
-    await gcsFile.write(csv);
+    await gcsFile.write(csvData);
   });
-
-  fileNames.forEach(fileName => {
-    await dataset.uploadDataSetItems(bucketName, fileName);
-  })
 
   const model = Model(projectId, location, dataset.getId(), displayName);
   model.trainModel();
