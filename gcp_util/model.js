@@ -5,7 +5,7 @@ const {
 } = require("@google-cloud/automl").v1;
 
 class Model {
-  constructor(projectId, datasetId, location, modelName, modelId) {
+  constructor(projectId, location, datasetId, modelName, modelId) {
     this.projectId = projectId;
     this.datasetId = datasetId;
     this.location = location;
@@ -27,7 +27,7 @@ class Model {
   async trainModel() {
     if (this.id === null && this.trainingInProgress === false) {
       this.trainingInProgress = true;
-      
+
       // Instantiates a client
       const client = new AutoMlClient();
 
@@ -49,10 +49,10 @@ class Model {
       console.log(`Training started...`, operation);
       console.log(`Training operation name: ${operation.name}`);
 
-      // TODO: figure out how to use Operations. needs to be initialized with rpc impl (???) 
+      // TODO: figure out how to use Operations. needs to be initialized with rpc impl (???)
       // api: https://cloud.google.com/automl/docs/reference/rest/v1beta1/projects.locations.operations/wait
       // js api: https://googleapis.dev/nodejs/automl/latest/google.longrunning.Operations.html#waitOperation1
-      const operations = new Operations() 
+      const operations = new Operations();
       operations.waitOperation({ name: this.name }, (err, response) => {
         this.trainingInProgress = false;
 
@@ -73,6 +73,7 @@ class Model {
   }
 
   async classifyData(data) {
+    // TODO: throw err if model not trianed yet
     // Instantiates a client
     const client = new PredictionServiceClient();
 
@@ -107,8 +108,8 @@ const scrape = require("../scrape/scrape.js");
 const test = async () => {
   const model = new Model(
     "softblocker",
-    "TCN1195179034997161984",
     "us-central1",
+    "TCN1195179034997161984",
     "test_3"
     // "TCN5269559009697857536"
   );
