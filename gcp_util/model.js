@@ -1,25 +1,24 @@
 const {
   AutoMlClient,
   PredictionServiceClient,
-  Operations,
 } = require("@google-cloud/automl").v1;
 
-class Model {
-  constructor(projectId, location, datasetId, modelName, modelId) {
-    this.projectId = projectId;
-    this.datasetId = datasetId;
-    this.location = location;
-    this.trainingInProgress = false;
-    this.trainingOperation = null;
-    this.name = modelName; // TODO: what if the model name is not correct? i.e. modelName not actually associated with modelId on gcp
-    // TODO: sanitize modelName... gcp has weired requirements abt display names
-    // display name: only allowed ones are ASCII Latin letters A-Z and a-z, an underscore (_), and ASCII digits 0-9
+const short = require("short-uuid");
 
-    if (modelId === undefined) {
+class Model {
+  constructor(props) {
+    this.projectId = props.projectId;
+    this.datasetId = props.datasetId;
+    this.location = props.location;
+    this.trainingOperationId = null;
+    this.trainingInProgress = false;
+
+    if (props.modelId === undefined || props.modelId === null) {
       this.id = null;
       this.trainModel();
     } else {
-      this.id = modelId;
+      this.id = props.modelId;
+      this.trainingPromise = Promise.resolve();
       // TODO: check that model with ID actually exists
     }
   }
@@ -28,56 +27,66 @@ class Model {
     if (this.id === null && this.trainingInProgress === false) {
       this.trainingInProgress = true;
 
-      // Instantiates a client
       const client = new AutoMlClient();
 
-      // Construct request
       const request = {
         parent: client.locationPath(this.projectId, this.location),
         model: {
-          displayName: this.name,
+          displayName: "model_" + short.generate(),
           datasetId: this.datasetId,
-          textClassificationModelMetadata: {}, // Leave unset, to use the default base model
+          textClassificationModelMetadata: {}, // Leave unset to use the default base model
         },
       };
 
-      // Don't wait for the LRO
       const [operation] = await client.createModel(request);
-      this.id = operation.metadata.id;
-      this.trainingOperation = operation;
 
-      console.log(`Training started...`, operation);
-      console.log(`Training operation name: ${operation.name}`);
+      this.trainingOperationId = operation.name
+        .split("/")
+        [operation.name.split("/").length - 1].split("\n")[0];
+      console.log(this.trainingOperationId);
 
-      // TODO: figure out how to use Operations. needs to be initialized with rpc impl (???)
-      // api: https://cloud.google.com/automl/docs/reference/rest/v1beta1/projects.locations.operations/wait
-      // js api: https://googleapis.dev/nodejs/automl/latest/google.longrunning.Operations.html#waitOperation1
-      const operations = new Operations();
-      operations.waitOperation({ name: this.name }, (err, response) => {
-        this.trainingInProgress = false;
+      this.trainingPromise = operation
+        .promise()
+        .then(([response]) => {
+          // TODO: handle case where response indicates model is not trained successfully.
+          this.id = response.name
+            .split("/")
+            [response.name.split("/").length - 1].split("\n")[0];
+          this.trainingInProgress = false;
+          this.trainingOperationId = null;
 
-        if (err) {
-          this.id = null;
-          throw err;
-        }
-      });
+          console.log(`Model name: ${this.name}`);
+          console.log(`Model id: ${this.id}`);
+        })
+        .catch((err) => {
+          this.trainingInProgress = false;
+          this.trainingOperationId = null;
+          console.log(err);
+        });
     } else {
       if (this.trainingInProgress === true) {
-        console.log(`Currently training model ${this.name} (ID: ${this.id}).`);
+        console.log(
+          `Currently training model. Operation ID: ${this.trainingOperationId}`
+        );
       } else {
         console.log(
-          `Training already compeleted for model ${this.name} (ID: ${this.id}).`
+          `Training already compeleted for model. Model ID: ${this.id}`
         );
       }
     }
   }
 
+  async waitForTrainingCompletion(callback) {
+    await this.trainingPromise;
+    // BUG: If training is unsuccessful, the callback with still run.
+    callback();
+  }
+
   async classifyData(data) {
-    // TODO: throw err if model not trianed yet
-    // Instantiates a client
+    await this.trainingPromise;
+    // BUG: If training is unsuccessful, the func with attempt to classify data using a model that dne.
     const client = new PredictionServiceClient();
 
-    // Construct request
     const request = {
       name: client.modelPath(this.projectId, this.location, this.id),
       payload: {
@@ -90,38 +99,47 @@ class Model {
 
     const [response] = await client.predict(request);
 
-    // for (const annotationPayload of response.payload) {
-    //   console.log(`Predicted class name: ${annotationPayload.displayName}`);
-    //   console.log(
-    //     `Predicted class score: ${annotationPayload.classification.score}`
-    //   );
-    // }
-
     return response.payload.map((el) => {
       return { label: el.displayName, score: el.classification.score };
     });
   }
+
+  getId() {
+    return this.id;
+  }
+
+  isTraining() {
+    return this.trainingInProgress;
+  }
+
+  getTrainingOperationId() {
+    return this.trainingOperationId;
+  }
 }
 
-const scrape = require("../scrape/scrape.js");
+// const scrape = require("../scrape/scrape.js");
 
-const test = async () => {
-  const model = new Model(
-    "softblocker",
-    "us-central1",
-    "TCN1195179034997161984",
-    "test_3"
-    // "TCN5269559009697857536"
-  );
+// const bucketName = "softblocker-lcm";
+// const projectId = "softblocker";
+// const location = "us-central1";
+// const collectionName = "profiles";
+// const operationId = "TCN4745457550864941056";
+// const datasetId = "TCN1195179034997161984";
 
-  // console.log(
-  //   await model.classifyData(
-  //     // await scrape("https://www.youtube.com/watch?v=1e7gy3fsJa8", false) // homer
-  //     await scrape("https://www.youtube.com/watch?v=VunWdHCjbI8", false) // homer simpson
-  //   )
-  // );
-};
+// const test = async () => {
+//   const model = new Model(
+//     { projectId, location, datasetId }
+//     // "TCN5269559009697857536"
+//   );
 
-test();
+//   // console.log(
+//   //   await model.classifyData(
+//   //     // await scrape("https://www.youtube.com/watch?v=1e7gy3fsJa8", false) // homer
+//   //     await scrape("https://www.youtube.com/watch?v=VunWdHCjbI8", false) // homer simpson
+//   //   )
+//   // );
+// };
+
+// test();
 
 module.exports = Model;
