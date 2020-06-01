@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index",
+    "dev": "nodemon index"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,7 @@
     "@google-cloud/storage": "^4.7.0",
     "axios": "^0.19.2",
     "cheerio": "^1.0.0-rc.3",
+    "express": "^4.17.1",
     "fast-csv": "^4.1.1",
     "firebase-admin": "^8.12.0",
     "jsdom": "^16.2.0",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "babel-preset-env": "^1.7.0",
-    "babel-register": "^6.26.0"
+    "babel-register": "^6.26.0",
+    "nodemon": "^2.0.4"
   }
 }

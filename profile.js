@@ -21,21 +21,20 @@ class Profile {
   // TODO: figure out how member fields of object are initialized
   //       can I just list them in one place instead of listing them in both ctors?
 
-  constructor(name, id) {
-    if (id !== undefined) {
-      this.id = id; // this.id is the id of the document in Firestore that corresponds to this profile.
-      this.name = name;
-      this.loadProfileData();
+  constructor(profileInfo) {
+    if (profileInfo.id !== undefined) {
+      this.id = profileInfo.id; // this.id is the id of the document in Firestore that corresponds to this profile.
+      this.creationPromise = this.loadProfileData();
     } else {
       this.id = short.generate();
-      this.name = name;
+      this.name = profileInfo.name ? profileInfo.name : "N/A";
 
       this.dataset = null;
       this.model = null;
       this.modelInTraining = null;
       this.labels = new Map();
 
-      this.createProfile();
+      this.creationPromise = this.createNewProfile();
     }
   }
 
@@ -45,42 +44,41 @@ class Profile {
     // TODO: if profile with this.id does not exist, create a new profile doc in collection
 
     if (profileData.name === null || profileData.name === undefined) {
-      const collection = new Collection(collectionName);
+      // const collection = new Collection(collectionName);
       collection.writeDoc(this.id, { name: this.name });
     } else if (this.name !== profileData.name) {
       this.name = profileData.name;
     }
 
-    this.dataset =
-      profileData.datasetId === null || profileData.datasetId === undefined
-        ? this.createNewDataset()
-        : new Dataset({
-            projectId,
-            location,
-            datasetId: profileData.datasetId,
-          });
-
-    if (profileData.modelId === null || profileData.modelId === undefined) {
-      this.model = null;
+    if (profileData.datasetId === null || profileData.datasetId === undefined) {
+      await this.createNewDataset();
     } else {
-      // TODO: rm await
-      await this.dataset.waitForCreationCompletion(() => {
-        this.model = new Model({
-          projectId,
-          location,
-          datasetId: this.dataset.getId(),
-          modelId: profileData.modelId,
-        });
+      this.dataset = new Dataset({
+        projectId,
+        location,
+        datasetId: profileData.datasetId,
       });
     }
 
     // BUG: model in training is not supposed to have an id ...
     // this.modelInTraining = profileData.modelInTrainingId === null || profileData.modelInTrainingId === undefined ? null : new Model(profileData.modelInTrainingId);
+    // TODO: Check if model in training is done(training operation id in profileData). If done, set this.model to the new model and set
+    // profileData.labels isInTraining values to false, isTrained values to true.
     this.modelInTraining = null;
+
+    if (profileData.modelId === null || profileData.modelId === undefined) {
+      this.model = null;
+    } else {
+      this.model = new Model({
+        projectId,
+        location,
+        datasetId: this.dataset.getId(),
+        modelId: profileData.modelId,
+      });
+    }
 
     this.labels = new Map(); // Trained labels have true value. Untrained labels have false value.
 
-    console.log(profileData);
     if (profileData.labels !== null && profileData.labels !== undefined) {
       Object.keys(profileData.labels).forEach((key, val) => {
         this.labels.set(
@@ -92,8 +90,24 @@ class Profile {
         );
       });
     }
+  }
 
-    console.log(this);
+  getInfo() {
+    let jsonLabels = {};
+    this.labels.forEach((val, key) => {
+      jsonLabels[key] = Object.fromEntries(val);
+    });
+
+    return {
+      id: this.id,
+      name: this.name,
+      dataset: this.dataset ? this.dataset.getInfo() : null,
+      model: this.model ? this.model.getInfo() : null,
+      modelInTraining: this.modelInTraining
+        ? this.modelInTraining.getInfo()
+        : null,
+      labels: jsonLabels,
+    };
   }
 
   async createNewProfile() {
@@ -109,10 +123,9 @@ class Profile {
       projectId,
       location,
     });
-    this.dataset.waitForCreationCompletion(() => {
-      const collection = new Collection(collectionName);
-      collection.writeDoc(this.id, { datasetId: this.dataset.getId() });
-    });
+    await this.dataset.getCreationPromise();
+    const collection = new Collection(collectionName);
+    collection.writeDoc(this.id, { datasetId: this.dataset.getId() });
   }
 
   async createNewModel() {
@@ -121,7 +134,7 @@ class Profile {
       location,
       datasetId: this.dataset.getId(),
     });
-    this.model.waitForTrainingCompletion(() => {
+    this.model.getTrainingPromise().then(() => {
       const collection = new Collection(collectionName);
       collection.writeDoc(this.id, { modelId: this.model.getId() });
     });
@@ -196,12 +209,19 @@ class Profile {
   classifyPage(url) {
     scrape(url, false);
   }
+
+  getCreationPromise() {
+    return this.creationPromise;
+  }
 }
 
-const test = async () => {
-  const profile = new Profile("Phewa Niu", "tOdjytdGdLI2B5Jjvfnw");
-};
+// const test = async () => {
+//   const profile = new Profile({
+//     name: "Phewa Niu",
+//     id: "tOdjytdGdLI2B5Jjvfnw",
+//   });
+// };
 
-test();
+// test();
 
 module.exports = Profile;

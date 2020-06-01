@@ -2,17 +2,17 @@ const { AutoMlClient } = require("@google-cloud/automl").v1;
 const short = require("short-uuid");
 
 class Dataset {
-  constructor(props) {
-    this.projectId = props.projectId;
-    this.location = props.location;
+  constructor(datasetInfo) {
+    this.projectId = datasetInfo.projectId;
+    this.location = datasetInfo.location;
     this.creationInProgress = false;
     this.creationOperationId = null;
-    if (props.datasetId === undefined) {
+    if (datasetInfo.datasetId === undefined) {
       this.id = null;
       this.createDataset();
     } else {
       // TODO: check that dataset with this.id actually exists
-      this.id = props.datasetId;
+      this.id = datasetInfo.datasetId;
       this.creationPromise = Promise.resolve();
     }
   }
@@ -64,10 +64,8 @@ class Dataset {
     }
   }
 
-  async waitForCreationCompletion(callback) {
-    await this.trainingPromise;
-    // BUG: If creation is unsuccessful, the callback with still run.
-    callback();
+  getCreationPromise() {
+    return this.creationPromise;
   }
 
   async importDatasetItems(bucketName, fileName) {
@@ -97,21 +95,30 @@ class Dataset {
   getId() {
     return this.id;
   }
+
+  getInfo() {
+    return {
+      id: this.id,
+      projectId: this.projectId,
+      location: this.location,
+      creationInProgress: this.creationInProgress,
+      creationOperationId: this.creationOperationId,
+    };
+  }
 }
 
-// const bucketName = "softblocker-lcm";
-// const projectId = "softblocker";
-// const location = "us-central1";
-// const collectionName = "profiles";
-// const operationId = "TCN4745457550864941056";
-// const datasetId = "TCN1195179034997161984";
-
+const bucketName = "softblocker-lcm";
+const projectId = "softblocker";
+const location = "us-central1";
+const collectionName = "profiles";
+const operationId = "TCN4745457550864941056";
+const datasetId = "TCN1195179034997161984";
 
 const test = () => {
-  dataset = new Dataset("softblocker", "us-central1", "test_4");
+  dataset = new Dataset({ projectId, location, datasetId });
   dataset.importDatasetItems("softblocker-lcm", "Homer.csv");
 };
 
-test();
+// test();
 
 module.exports = Dataset;

@@ -6,18 +6,18 @@ const {
 const short = require("short-uuid");
 
 class Model {
-  constructor(props) {
-    this.projectId = props.projectId;
-    this.datasetId = props.datasetId;
-    this.location = props.location;
+  constructor(modelInfo) {
+    this.projectId = modelInfo.projectId;
+    this.datasetId = modelInfo.datasetId;
+    this.location = modelInfo.location;
     this.trainingOperationId = null;
     this.trainingInProgress = false;
 
-    if (props.modelId === undefined || props.modelId === null) {
+    if (modelInfo.modelId === undefined || modelInfo.modelId === null) {
       this.id = null;
       this.trainModel();
     } else {
-      this.id = props.modelId;
+      this.id = modelInfo.modelId;
       this.trainingPromise = Promise.resolve();
       // TODO: check that model with ID actually exists
     }
@@ -76,10 +76,8 @@ class Model {
     }
   }
 
-  async waitForTrainingCompletion(callback) {
-    await this.trainingPromise;
-    // BUG: If training is unsuccessful, the callback with still run.
-    callback();
+  getTrainingPromise() {
+    return this.trainingPromise;
   }
 
   async classifyData(data) {
@@ -114,6 +112,17 @@ class Model {
 
   getTrainingOperationId() {
     return this.trainingOperationId;
+  }
+
+  getInfo() {
+    return {
+      id: this.id,
+      trainingInProgress: this.trainingInProgress,
+      trainingOperationId: this.trainingOperationId,
+      projectId: this.projectId,
+      datasetId: this.datasetId,
+      location: this.location,
+    };
   }
 }
 
