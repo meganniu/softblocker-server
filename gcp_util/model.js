@@ -13,9 +13,10 @@ class Model {
     this.trainingOperationId = null;
     this.trainingInProgress = false;
 
+
     if (modelInfo.modelId === undefined || modelInfo.modelId === null) {
       this.id = null;
-      this.trainModel();
+      this.trainingPromise = this.trainModel();
     } else {
       this.id = modelInfo.modelId;
       this.trainingPromise = Promise.resolve();
@@ -116,9 +117,9 @@ class Model {
 
   getInfo() {
     return {
-      id: this.id,
+      id: this.id ? this.id : null,
       trainingInProgress: this.trainingInProgress,
-      trainingOperationId: this.trainingOperationId,
+      trainingOperationId: this.trainingOperationId ? this.trainingOperationId : null,
       projectId: this.projectId,
       datasetId: this.datasetId,
       location: this.location,

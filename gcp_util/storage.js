@@ -9,12 +9,13 @@ class GCSFile {
     this.fileName = fileName;
   }
 
-  // TODO: for write and upload, DO NOT write/reupload is file already exists
+  // TODO: for write and upload, DO NOT write/reupload if file already exists
   async write(data) {
     // Uploads a local file to the bucket
     const writeStream = this.storage.file(this.fileName).createWriteStream();
     writeStream.on("error", (err) => {
-      console.error(`${this.fileName}: Error storage file write.`);
+      console.log(err)
+      console.error(`${this.fileName}: Error writing file to storage.`);
       console.error(`${this.fileName}: ${JSON.stringify(err)}`);
     });
 

@@ -13,6 +13,7 @@ const bucketName = "softblocker-lcm";
 const projectId = "softblocker";
 const location = "us-central1";
 const collectionName = "profiles";
+const collection = new Collection(collectionName);
 
 // homer: https://www.youtube.com/watch?v=1e7gy3fsJa8
 // homer simpson: https://www.youtube.com/watch?v=VunWdHCjbI8
@@ -32,14 +33,13 @@ class Profile {
       this.dataset = null;
       this.model = null;
       this.modelInTraining = null;
-      this.labels = new Map();
+      this.topics = new Map();
 
       this.creationPromise = this.createNewProfile();
     }
   }
 
   async loadProfileData() {
-    const collection = new Collection(collectionName);
     const profileData = await collection.getDoc(this.id);
     // TODO: if profile with this.id does not exist, create a new profile doc in collection
 
@@ -63,7 +63,7 @@ class Profile {
     // BUG: model in training is not supposed to have an id ...
     // this.modelInTraining = profileData.modelInTrainingId === null || profileData.modelInTrainingId === undefined ? null : new Model(profileData.modelInTrainingId);
     // TODO: Check if model in training is done(training operation id in profileData). If done, set this.model to the new model and set
-    // profileData.labels isInTraining values to false, isTrained values to true.
+    // profileData.topics isInTraining values to false, isTrained values to true.
     this.modelInTraining = null;
 
     if (profileData.modelId === null || profileData.modelId === undefined) {
@@ -77,27 +77,44 @@ class Profile {
       });
     }
 
-    this.labels = new Map(); // Trained labels have true value. Untrained labels have false value.
+    // Load map of topics and their training status.
+    this.topics = new Map();
+    const isTrainedKey = "isTrained";
+    const isInTrainingKey = "isInTraining";
 
-    if (profileData.labels !== null && profileData.labels !== undefined) {
-      Object.keys(profileData.labels).forEach((key, val) => {
-        this.labels.set(
-          key,
+    for (var topic in profileData.topics) {
+      if (profileData.topics.hasOwnProperty(topic)) {
+        this.topics.set(
+          topic,
           new Map([
-            ["isTrained", val["isTrained"] === true ? true : false],
-            ["isInTraining", val["isInTraining"] === true ? true : false],
+            [
+              isTrainedKey,
+              profileData.topics[topic].hasOwnProperty(isTrainedKey)
+                ? profileData.topics[topic][isTrainedKey]
+                : false,
+            ],
+            [
+              isInTrainingKey,
+              profileData.topics[topic].hasOwnProperty(isInTrainingKey)
+                ? profileData.topics[topic][isInTrainingKey]
+                : false,
+            ],
           ])
         );
-      });
+      }
     }
   }
 
-  getInfo() {
-    let jsonLabels = {};
-    this.labels.forEach((val, key) => {
-      jsonLabels[key] = Object.fromEntries(val);
+  getTopics() {
+    let topics = {};
+    this.topics.forEach((val, key) => {
+      topics[key] = Object.fromEntries(val);
     });
 
+    return topics;
+  }
+
+  getInfo() {
     return {
       id: this.id,
       name: this.name,
@@ -106,12 +123,12 @@ class Profile {
       modelInTraining: this.modelInTraining
         ? this.modelInTraining.getInfo()
         : null,
-      labels: jsonLabels,
+      topics: this.getTopics(),
     };
   }
 
   async createNewProfile() {
-    this.labels = new Map();
+    this.topics = new Map();
     this.model = null;
     this.modelInTraining = null;
 
@@ -124,7 +141,6 @@ class Profile {
       location,
     });
     await this.dataset.getCreationPromise();
-    const collection = new Collection(collectionName);
     collection.writeDoc(this.id, { datasetId: this.dataset.getId() });
   }
 
@@ -135,70 +151,106 @@ class Profile {
       datasetId: this.dataset.getId(),
     });
     this.model.getTrainingPromise().then(() => {
-      const collection = new Collection(collectionName);
       collection.writeDoc(this.id, { modelId: this.model.getId() });
     });
   }
 
-  addLabels(labels) {
-    // `labels` is an array of strings.
-    labels.forEach((label) => {
-      if (this.labels.has(label) === false) {
-        this.labels.set(
-          label,
-          new Map([
-            ["isTrained", false],
-            ["isInTraining", false],
-          ])
-        );
-      }
-    });
+  async addTopic(topic) {
+    // `topics` is an array of strings.
+    if (this.topics.has(topic) === false) {
+      this.topics.set(
+        topic,
+        new Map([
+          ["isTrained", false],
+          ["isInTraining", false],
+        ])
+      );
 
-    const collection = new Collection(collectionName);
-    collection.writeDoc(this.id, { labels: this.labels });
+      await collection.writeDoc(this.id, { topics: this.getTopics() });
+    }
   }
 
   async trainModel(force) {
-    let numUntrainedLabels = 0;
-    this.labels.forEach((key, val) => {
-      if (val["isTrained"] === false) {
-        numUntrainedLabels += 1;
+    let numUntrainedTopics = 0;
+    this.topics.forEach((val, key) => {
+      if (val.get("isTrained") === false) {
+        ++numUntrainedTopics;
       }
     });
 
+    // If dataset is created for profile and either training is forced on there is more than one untrained topics, train
+    // a new model.
     if (
-      (numUntrainedLabels > 0 && this.modelInTraining === null) ||
-      force === true
+      this.dataset.getId() &&
+      ((numUntrainedTopics > 0 && this.modelInTraining === null) ||
+        force === true)
     ) {
       // TODO: if force, then cancel model that is in training before training new model
-      // TODO: upload all label training data to dataset
-      //   const datasetName = this.id;
-      // const dataset = new Dataset(projectId, location, datasetName);
 
-      // labels.forEach(label => {
-      //   this.addLabel(label);
+      // Upload training data of untrained topics to dataset.
+      let dataImportPromise = Promise.resolve();
+      this.topics.forEach(async (val, topic) => {
+        if (!val.get("isTrained") && !val.get("isInTraining")) {
+          const fileName = topic + ".csv";
+          const csvData = createTrainingCSV(
+            await wikipedia.getWikipediaData(topic),
+            topic
+          );
 
-      //   const fileName = label + ".csv";
-      //   const csvData = createTrainingCSV(await wikipedia.getWikipediaData(topic), label);
+          const gcsFile = new GCSFile(bucketName, fileName);
+          await gcsFile.write(csvData);
+          this.topics.get(topic).set("isInTraining", true);
 
-      //   const gcsFile = new GCSFile(bucketName, fileName);
-      //   await gcsFile.write(csvData);
+          // GCP requires that an upload to a dataset must complete before starting another one.
+          dataImportPromise = dataImportPromise.then(() => {
+            return this.dataset
+              .importDatasetItems(bucketName, fileName)
+              .catch((error) => {
+                console.log(error);
+                this.topics.get(topic).set("isInTraining", false); // If upload of topic data fails, topic will not be trained.
+              });
+          });
+        }
+      });
 
-      //   dataset.importDatasetItems(bucketName, fileName);
-      // });
-      const modelInTraining = Model(
-        projectId,
-        location,
-        dataset.getId(),
-        displayName
-      );
-      modelInTraining.trainModel();
+      dataImportPromise
+        .then(() => {
+          this.modelInTraining = new Model({
+            projectId,
+            location,
+            datasetId: this.dataset.getId(),
+          });
+          return modelInTraining.getTrainingPromise();
+        })
+        .then((res) => {
+          // Set isTrained to true when topic finished training.
+          this.topics.forEach(async (val, topic) => {
+            if (val["isInTraining"]) {
+              this.topics.get(topic).set("isInTraining", false);
+              this.topics.get(topic).set("isTrained", true);
+            }
+          });
 
-      // TODO: when a model is done training, update this.labels
+          // Write
+          return collection.writeDoc(this.id, { topics: this.getTopics() });
+        })
+        .catch((error) => {
+          console.log(error);
+
+          // If model training fails, topic will not be trained.
+          this.topics.forEach(async (val, topic) => {
+            if (val["isInTraining"]) {
+              this.topics[topic]["isInTraining"] = false;
+              this.topics[topic]["isTrained"] = false;
+            }
+          });
+
+          collection.writeDoc(this.id, { topics: this.getTopics() });
+        });
     } else {
       if (this.modelInTraining === null) {
         console.log(
-          "No new labels were added since the last model was trained. A new model will not be trained."
+          "No new topics were added since the last model was trained. A new model will not be trained."
         );
       } else {
         console.log("Model is currently being trained.");
