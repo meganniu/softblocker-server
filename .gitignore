@@ -2,3 +2,4 @@ node_modules/*
 softblocker*
 setup.sh
 training-data/*
+app.yaml

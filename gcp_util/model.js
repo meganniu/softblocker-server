@@ -56,8 +56,7 @@ class Model {
           this.trainingInProgress = false;
           this.trainingOperationId = null;
 
-          console.log(`Model name: ${this.name}`);
-          console.log(`Model id: ${this.id}`);
+          console.log(`Model training complete (ID: ${this.id})`);
         })
         .catch((err) => {
           this.trainingInProgress = false;
