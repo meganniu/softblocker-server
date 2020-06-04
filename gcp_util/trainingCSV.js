@@ -1,5 +1,4 @@
 var fs = require("fs");
-const wtj = require("wikipedia-to-json");
 
 function createTrainingCSV(data, topic) {
   csv = "";

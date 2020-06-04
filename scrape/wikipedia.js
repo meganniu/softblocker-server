@@ -2,10 +2,10 @@ const fs = require("fs");
 const url = require("url");
 const path = require("path");
 
-const wtj = require("wikipedia-to-json");
+const wikiParser = require("./wikipedia-utils/WikipediaParser");
 
 const getWikipediaData = async (topic) => {
-  const elements = await wtj.fetchArticleElements(topic);
+  const elements = await wikiParser.fetchArticleElements(topic);
 
   const ret = elements.reduce((res, el) => {
     if (el.type === "PARAGRAPH" && el.text) res.push(el.text);
