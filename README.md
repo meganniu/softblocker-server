@@ -1,4 +1,10 @@
-# softblocker
+# Softblocker Server
+
+## Design
+### System
+![System Design](./images/system-design.png)
+### Database Schema
+
 
 ## Setup
 Put GCP service account key file (a `.json` file) in the root of the folder.
