@@ -16,6 +16,7 @@
     "@google-cloud/storage": "^4.7.0",
     "axios": "^0.19.2",
     "cheerio": "^1.0.0-rc.3",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
     "fast-csv": "^4.1.1",
     "firebase-admin": "^8.12.0",

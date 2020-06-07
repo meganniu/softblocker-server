@@ -37,6 +37,21 @@ router.post("/:id/topics", (req, res) => {
     });
 });
 
+router.get("/:id/topics", (req, res) => {
+  const profile = new Profile({ id: req.params.id });
+  profile
+    .getCreationPromise()
+    .then(() => {
+      res.json(profile.getTopics());
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(400).json({
+        msg: `Unable to retrieve topics.`,
+      });
+    });
+});
+
 router.post("/:id/models", (req, res) => {
   const id = req.params.id;
   const profile = new Profile({ id });
