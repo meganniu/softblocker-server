@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 
-const serviceAccount = require("../softblocker-2.json");
+const serviceAccount = require("../softblocker-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),

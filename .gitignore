@@ -1,5 +1,5 @@
 node_modules/*
-softblocker*
+softblocker-key*
 setup.sh
 training-data/*
 app.yaml
