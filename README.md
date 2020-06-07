@@ -2,9 +2,19 @@
 
 ## Design
 ### System
-![System Design](./images/system-design.png)
+![System Design](./images/softblocker-design.png)
 ### Database Schema
-
+ID of the document is the user/profile ID. The following is the schema of each document:
+```
+datasetId: String,
+modelId: String,
+topics: Map{ 
+  topic_name: Map{ 
+    isInTraining: Boolean, 
+    isTrained: Boolean
+  } 
+}
+```
 
 ## Setup
 Put GCP service account key file (a `.json` file) in the root of the folder.
