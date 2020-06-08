@@ -52,7 +52,7 @@ router.get("/:id/topics", (req, res) => {
     });
 });
 
-router.post("/:id/models", (req, res) => {
+router.put("/:id/models", (req, res) => {
   const id = req.params.id;
   const profile = new Profile({ id });
   profile
@@ -66,6 +66,27 @@ router.post("/:id/models", (req, res) => {
       console.log(err);
       res.status(400).json({
         msg: `Unable to train model for profile ${id}.`,
+      });
+    });
+});
+
+router.post("/:id/models", (req, res) => {
+  const id = req.params.id;
+  const url = req.body.url;
+
+  const profile = new Profile({ id });
+  profile
+    .getCreationPromise()
+    .then(() => {
+      return profile.classifyPage(url);
+    })
+    .then((result) => {
+      res.json({ data: result });
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(400).json({
+        msg: `Unable to classify webpage at ${url}.`,
       });
     });
 });

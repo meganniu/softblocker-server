@@ -265,8 +265,8 @@ class Profile {
     }
   }
 
-  classifyPage(url) {
-    scrape(url, false);
+  async classifyPage(url) {
+    return await this.model.classifyData(await scrape(url, false));
   }
 
   getCreationPromise() {

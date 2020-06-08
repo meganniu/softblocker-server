@@ -13,7 +13,6 @@ class Model {
     this.trainingOperationId = null;
     this.trainingInProgress = false;
 
-
     if (modelInfo.modelId === undefined || modelInfo.modelId === null) {
       this.id = null;
       this.trainingPromise = this.trainModel();
@@ -44,7 +43,6 @@ class Model {
       this.trainingOperationId = operation.name
         .split("/")
         [operation.name.split("/").length - 1].split("\n")[0];
-      console.log(this.trainingOperationId);
 
       this.trainingPromise = operation
         .promise()
@@ -118,7 +116,9 @@ class Model {
     return {
       id: this.id ? this.id : null,
       trainingInProgress: this.trainingInProgress,
-      trainingOperationId: this.trainingOperationId ? this.trainingOperationId : null,
+      trainingOperationId: this.trainingOperationId
+        ? this.trainingOperationId
+        : null,
       projectId: this.projectId,
       datasetId: this.datasetId,
       location: this.location,
