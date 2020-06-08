@@ -15,6 +15,11 @@ topics: Map{
   } 
 }
 ```
+## Redesign
+### System
+![Revised System Design](./images/revised-softblocker-design.png)
+### Database Schema
+![Revised DB Schema](./images/revised-db-schema.png)
 
 ## Setup
 Put GCP service account key file (a `.json` file) in the root of the folder.
